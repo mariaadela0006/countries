@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Say Thank You To The World</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #f0f9ff;
+            overflow: hidden;
+        }
+        .title-font { font-family: 'Bungee', cursive; }
+        
+        .image-card {
+            transition: transform 0.2s, filter 0.3s;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 4px solid #fff;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .image-card:hover:not(.disabled) {
+            transform: scale(1.03);
+        }
+        .image-card.disabled {
+            filter: grayscale(1) opacity(0.3);
+            cursor: not-allowed;
+        }
+        
+        .number-badge {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: #facc15;
+            color: #1e3a8a;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 1.5rem;
+            border: 3px solid #1e3a8a;
+            z-index: 10;
+        }
+        
+        .modal-overlay {
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(8px);
+        }
+
+        .team-active {
+            border: 8px solid #fbbf24;
+            transform: scale(1.05);
+            background: #eff6ff;
+        }
+
+        .bounce-in {
+            animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-blue-600">
+    <div id="app" class="h-full w-full">
+        
+        <!-- SETUP PAGE -->
+        <div id="setup-page" class="h-full flex flex-col items-center justify-center p-4">
+            <div class="bg-white/95 p-8 rounded-[3rem] shadow-2xl text-center max-w-2xl w-full border-[12px] border-yellow-400">
+                <h1 class="title-font text-5xl text-blue-600 mb-6 drop-shadow-md">SAY THANK YOU<br>TO THE WORLD</h1>
+                <p class="text-2xl font-bold text-gray-700 mb-6">Test your geography knowledge!</p>
+                
+                <div class="mb-8">
+                    <label class="block text-xl font-bold text-blue-800 mb-3">How many teams?</label>
+                    <div class="flex items-center justify-center gap-6">
+                        <button onclick="changeTeamCount(-1)" class="bg-red-500 text-white w-14 h-14 rounded-full text-3xl font-bold hover:bg-red-600 shadow-xl">-</button>
+                        <span id="team-count-display" class="text-6xl font-black text-gray-800">3</span>
+                        <button onclick="changeTeamCount(1)" class="bg-green-500 text-white w-14 h-14 rounded-full text-3xl font-bold hover:bg-green-600 shadow-xl">+</button>
+                    </div>
+                </div>
+
+                <button onclick="startGame()" class="bg-yellow-400 hover:bg-yellow-500 text-blue-900 title-font text-3xl py-4 px-12 rounded-full transition-all transform hover:scale-105 shadow-2xl border-b-[8px] border-yellow-600">
+                    START GAME!
+                </button>
+            </div>
+        </div>
+
+        <!-- BATTLE PAGE -->
+        <div id="battle-page" class="hidden h-full p-4 flex flex-col bg-slate-900">
+            <div class="flex justify-between items-center mb-4">
+                <button onclick="toggleFullscreen()" class="bg-white/20 hover:bg-white/30 text-white py-2 px-6 rounded-full backdrop-blur-md border border-white/50 text-xl font-bold">
+                    FULL SCREEN
+                </button>
+                <div id="teams-container" class="flex flex-wrap justify-center gap-4"></div>
+            </div>
+            
+            <div class="flex-grow flex items-center justify-center overflow-hidden p-2">
+                <div id="image-grid" class="grid grid-cols-7 gap-4 w-full max-h-[60vh]"></div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between bg-white/10 backdrop-blur-md p-6 rounded-3xl">
+                <p class="text-white text-4xl font-bold">Current Turn: <span id="current-team-display" class="text-yellow-400 title-font text-5xl">Team 1</span></p>
+                <button onclick="showWinnerSelection()" class="bg-red-600 hover:bg-red-700 text-white font-black py-4 px-10 rounded-full text-2xl shadow-xl">END GAME</button>
+            </div>
+        </div>
+
+        <!-- IMAGE MODAL -->
+        <div id="image-modal" class="hidden inset-0 fixed modal-overlay z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-[3rem] p-10 max-w-5xl w-full h-[85vh] text-center bounce-in shadow-2xl border-[8px] border-blue-400 flex flex-col">
+                <div id="question-content" class="flex-grow flex flex-col items-center justify-center">
+                    <div id="modal-image-container" class="w-full max-w-md mx-auto mb-8 rounded-3xl overflow-hidden shadow-2xl border-4 border-gray-200"></div>
+                    <h2 class="text-6xl font-black text-blue-900 mb-10">Which country is it?</h2>
+                    <div id="answer-buttons" class="grid grid-cols-2 gap-8 w-full max-w-2xl"></div>
+                </div>
+                <!-- Result -->
+                <div id="result-overlay" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-10 z-10 rounded-[3rem]">
+                    <h3 id="result-message-status" class="text-8xl font-black mb-6"></h3>
+                    <img id="result-gif" src="" class="h-64 w-64 object-contain mb-6">
+                    <p id="result-message-text" class="text-5xl font-black mb-4"></p>
+                    <p id="result-points" class="text-8xl font-black text-red-600 mb-10"></p>
+                    <button onclick="closeModal()" class="bg-blue-600 text-white font-bold py-6 px-20 rounded-full text-4xl shadow-2xl">CONTINUE</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WINNER MODAL -->
+        <div id="winner-selection-modal" class="hidden fixed inset-0 modal-overlay z-[70] flex items-center justify-center p-4">
+            <div class="bg-white p-10 rounded-[3rem] text-center max-w-xl w-full border-[8px] border-red-500">
+                <h2 class="title-font text-5xl text-blue-800 mb-8">Select Winner</h2>
+                <div id="winner-team-buttons" class="grid grid-cols-2 gap-6"></div>
+            </div>
+        </div>
+        
+        <!-- END PAGE -->
+        <div id="end-page" class="hidden fixed inset-0 bg-blue-900 flex items-center justify-center p-6 z-[80]">
+            <div class="bg-white p-12 rounded-[3rem] text-center max-w-3xl w-full border-[8px] border-yellow-400">
+                <h1 class="title-font text-7xl text-blue-600 mb-8">GAME OVER!</h1>
+                <div id="final-scoreboard" class="space-y-4 mb-12 text-4xl font-bold text-gray-700"></div>
+                <button onclick="location.reload()" class="bg-blue-600 text-white font-bold text-4xl py-6 px-16 rounded-full">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const IMAGE_ANSWERS = {
+            1: "USA", 2: "France", 3: "Spain", 4: "Vietnam", 5: "Indonesia",
+            6: "South Korea", 7: "Japan", 8: "USA", 9: "Spain", 10: "Indonesia",
+            11: "Vietnam", 12: "France", 13: "South Korea", 14: "Japan"
+        };
+        const ALL_COUNTRIES = ["USA", "France", "Spain", "Vietnam", "Indonesia", "South Korea", "Japan"];
+
+        const GROUP_1 = [1, 2, 3, 4, 5, 6, 7];
+        const GROUP_2 = [8, 9, 10, 11, 12, 13, 14];
+
+        const STARTING_POINTS = 1000;
+        let teamCount = 3;
+        let teams = [];
+        let currentTeamIndex = 0;
+        let currentBatchIndex = 0; 
+        let imagesAnswered = new Set();
+        let currentSelectedId = null;
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function changeTeamCount(delta) {
+            teamCount = Math.max(2, Math.min(6, teamCount + delta));
+            document.getElementById('team-count-display').innerText = teamCount;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function startGame() {
+            teams = [];
+            for (let i = 1; i <= teamCount; i++) teams.push({ id: i, score: STARTING_POINTS });
+            document.getElementById('setup-page').classList.add('hidden');
+            document.getElementById('battle-page').classList.remove('hidden');
+            renderTeams();
+            renderImageBatch();
+            updateTurnUI();
+        }
+
+        function renderTeams() {
+            const container = document.getElementById('teams-container');
+            container.innerHTML = '';
+            teams.forEach((team, index) => {
+                const div = document.createElement('div');
+                div.className = `bg-white px-8 py-4 rounded-2xl shadow-lg text-center ${index === currentTeamIndex ? 'team-active ring-4 ring-yellow-400' : 'border-2 border-white'} ${team.score <= 0 ? 'opacity-30 grayscale' : ''}`;
+                div.innerHTML = `<p class="text-2xl font-black text-blue-800">Team ${team.id}</p><p class="text-5xl font-black">${team.score}</p>`;
+                container.appendChild(div);
+            });
+        }
+
+        function renderImageBatch() {
+            const grid = document.getElementById('image-grid');
+            grid.innerHTML = '';
+            const batch = (currentBatchIndex === 0) ? GROUP_1 : GROUP_2;
+
+            batch.forEach((imgId, index) => {
+                const card = document.createElement('div');
+                const isUsed = imagesAnswered.has(imgId);
+                card.className = `image-card ${isUsed ? 'disabled' : ''}`;
+                
+                const badge = document.createElement('div');
+                badge.className = 'number-badge';
+                badge.innerText = index + 1; 
+                card.appendChild(badge);
+
+                const img = document.createElement('img');
+                img.src = `image${imgId}.png`;
+                img.className = "w-full h-full object-contain p-2";
+                img.onerror = () => { img.src = "https://placehold.co/400x400/6366f1/white?text=Map"; };
+
+                if (!isUsed) card.onclick = () => openImage(imgId);
+                card.appendChild(img);
+                grid.appendChild(card);
+            });
+        }
+
+        function openImage(id) {
+            currentSelectedId = id;
+            const container = document.getElementById('modal-image-container');
+            container.innerHTML = `<img src="image${id}.png" class="w-full h-64 object-contain">`;
+            
+            const buttonsContainer = document.getElementById('answer-buttons');
+            buttonsContainer.innerHTML = '';
+            
+            const correct = IMAGE_ANSWERS[currentSelectedId];
+            const others = ALL_COUNTRIES.filter(c => c !== correct);
+            const wrong = others[Math.floor(Math.random() * others.length)];
+            const choices = shuffleArray([correct, wrong]);
+
+            choices.forEach(country => {
+                const btn = document.createElement('button');
+                btn.className = "bg-blue-600 hover:bg-blue-700 text-white font-black text-4xl py-10 rounded-3xl shadow-xl transition-transform active:scale-95";
+                btn.innerText = country;
+                btn.onclick = () => checkAnswer(country);
+                buttonsContainer.appendChild(btn);
+            });
+            document.getElementById('result-overlay').classList.add('hidden');
+            document.getElementById('image-modal').classList.remove('hidden');
+        }
+
+        function checkAnswer(choice) {
+            const isCorrect = choice === IMAGE_ANSWERS[currentSelectedId];
+            const overlay = document.getElementById('result-overlay');
+            const statusText = document.getElementById('result-message-status');
+            const gif = document.getElementById('result-gif');
+            const msgText = document.getElementById('result-message-text');
+            const pts = document.getElementById('result-points');
+            
+            let deduction = 0;
+            
+            if (isCorrect) {
+                const rand = Math.random() * 100;
+                if (rand < 80) {
+                    deduction = Math.floor(Math.random() * 31) + 10;
+                    statusText.innerText = "CORRECT!";
+                    statusText.className = "text-8xl font-black mb-4 text-green-600";
+                    gif.src = "happy.gif";
+                    msgText.innerText = "Great!";
+                } else if (rand < 95) {
+                    deduction = Math.floor(Math.random() * 21) + 50;
+                    statusText.innerText = "CORRECT!";
+                    statusText.className = "text-8xl font-black mb-4 text-green-600";
+                    gif.src = "okay.gif";
+                    msgText.innerText = "Okay!";
+                } else {
+                    deduction = Math.floor(Math.random() * 21) + 80;
+                    statusText.innerText = "CORRECT!";
+                    statusText.className = "text-8xl font-black mb-4 text-green-600";
+                    gif.src = "sad.gif";
+                    msgText.innerText = "Oh No!";
+                }
+            } else {
+                deduction = 100;
+                statusText.innerText = "WRONG!";
+                statusText.className = "text-8xl font-black mb-4 text-red-700";
+                gif.src = "incorrect.gif";
+                msgText.innerText = "Oops, try again!";
+            }
+            
+            teams[currentTeamIndex].score = Math.max(0, teams[currentTeamIndex].score - deduction);
+            pts.innerText = `-${deduction}`;
+            
+            imagesAnswered.add(currentSelectedId);
+            overlay.classList.remove('hidden');
+            renderTeams();
+        }
+
+        function closeModal() {
+            document.getElementById('image-modal').classList.add('hidden');
+            
+            // Check for game over (Only one team with points left)
+            const activeTeams = teams.filter(t => t.score > 0);
+            if (activeTeams.length <= 1) {
+                showWinner(activeTeams[0] || teams[0]);
+                return;
+            }
+
+            // Loop batches
+            const batch = (currentBatchIndex === 0) ? GROUP_1 : GROUP_2;
+            if (batch.every(id => imagesAnswered.has(id))) {
+                if (currentBatchIndex === 0) {
+                    currentBatchIndex = 1;
+                } else {
+                    imagesAnswered.clear();
+                    currentBatchIndex = 0;
+                }
+                renderImageBatch();
+            } else {
+                renderImageBatch();
+            }
+
+            // Next team (Skip if score is 0)
+            let nextIndex = (currentTeamIndex + 1) % teams.length;
+            while (teams[nextIndex].score <= 0) {
+                nextIndex = (nextIndex + 1) % teams.length;
+            }
+            currentTeamIndex = nextIndex;
+            updateTurnUI();
+        }
+
+        function updateTurnUI() {
+            document.getElementById('current-team-display').innerText = `Team ${teams[currentTeamIndex].id}`;
+            renderTeams();
+        }
+
+        function showWinnerSelection() {
+            const modal = document.getElementById('winner-selection-modal');
+            const container = document.getElementById('winner-team-buttons');
+            container.innerHTML = '';
+            teams.forEach(team => {
+                const btn = document.createElement('button');
+                btn.className = "bg-blue-600 hover:bg-blue-700 text-white font-bold py-6 px-10 rounded-2xl text-2xl shadow-lg";
+                btn.innerText = `Team ${team.id}`;
+                btn.onclick = () => showWinner(team);
+                container.appendChild(btn);
+            });
+            modal.classList.remove('hidden');
+        }
+
+        function showWinner(team) {
+            document.getElementById('winner-selection-modal').classList.add('hidden');
+            const scoreboard = document.getElementById('final-scoreboard');
+            scoreboard.innerHTML = '';
+            [...teams].sort((a, b) => b.score - a.score).forEach(t => {
+                scoreboard.innerHTML += `<p>Team ${t.id}: ${t.score} Points</p>`;
+            });
+            document.getElementById('end-page').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
